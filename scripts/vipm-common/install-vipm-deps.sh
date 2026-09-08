@@ -1,13 +1,15 @@
 #!/bin/bash
-# Resolve the VIPM CLI, verify it supports vipm.toml/vipm.lock, and install a
-# project's dependencies from a manifest. Used by the Linux container build path.
-# A missing or too-old CLI is a hard error because dependencies were requested.
+# Resolve the VIPM CLI (installing it via .deb if missing), verify it supports
+# vipm.toml/vipm.lock, and install a project's dependencies from a manifest.
+# Used by the Linux container build path. A too-old CLI is a hard error because
+# dependencies were explicitly requested.
 
 set -euo pipefail
 
 VIPM_TOML=""
 VIPM_LOCK=""
 MIN_VERSION="25.3"
+VIPM_DEB_URL="https://traffic.libsyn.com/secure/jkinc/vipm_26.3.1-4025_amd64.deb"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -28,10 +30,19 @@ if [[ -z "$VIPM_TOML" ]]; then
 fi
 
 if ! command -v vipm >/dev/null 2>&1; then
-    echo "Error: VIPM CLI not found in container."
-    echo "The stock NI LabVIEW image does not include VIPM. Bake VIPM into a custom image (FROM the NI LabVIEW image) or install it in the entrypoint before building."
-    echo "See https://docs.vipm.io/cli/docker/."
-    exit 1
+    echo "VIPM CLI not found in container; installing from $VIPM_DEB_URL..."
+    apt-get update
+    apt-get install -y wget
+    wget --no-check-certificate -O /tmp/vipm.deb "$VIPM_DEB_URL"
+    dpkg -i /tmp/vipm.deb
+    vipm --version
+    rm -f /tmp/vipm.deb
+
+    if ! command -v vipm >/dev/null 2>&1; then
+        echo "Error: VIPM CLI still not found after installation."
+        exit 1
+    fi
+    echo "VIPM installed: $(vipm --version)"
 fi
 
 # Real VIPM versions are plain dotted numbers (e.g. 26.3.0), not YYYY.Q -
