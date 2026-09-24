@@ -1,0 +1,18 @@
+name: Scheduled VIPM Dependency Update
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Every Monday 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update-vipm-dependencies:
+    uses: ./.github/workflows/reusable-vipm-update.yml
+    with:
+      working_directory: scripts/apply-vipc
+      labview_version: '2021'
+      labview_bitness: '64'
+    secrets:
+      VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+      VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+      VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
